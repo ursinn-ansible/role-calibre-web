@@ -1,3 +1,71 @@
 ---
-- include_tasks: "{{ role_path }}/tasks/setup.yml"
-  when: "app_calibre_web_enabled|bool"
+- name: set vars
+  set_fact:
+    docker_image: '{{ role_calibre-web_image }}'
+    docker_container: '{{ role_calibre-web_container }}'
+    docker_puid: '{{ role_calibre-web_puid }}'
+    docker_pgid: '{{ role_calibre-web_pgid }}'
+    docker_tz: '{{ role_calibre-web_tz }}'
+    docker_dir_config: '{{ role_calibre-web_dir }}/config'
+    docker_dir_books: '{{ role_calibre-web_dir }}/books'
+    docker_network: '{{ role_calibre-web_network }}'
+
+- name: Create config directory
+  ansible.builtin.file:
+    path: '{{ docker_dir_config }}'
+    state: directory
+    owner: '{{ docker_puid }}'
+    group: '{{ docker_pgid }}'
+    mode: 0755
+
+- name: Create books directory
+  ansible.builtin.file:
+    path: '{{ docker_dir_books }}'
+    state: directory
+    owner: '{{ docker_puid }}'
+    group: '{{ docker_pgid }}'
+    mode: 0755
+
+- name: Ensure image is pulled
+  community.docker.docker_image:
+    name: "{{ docker_image }}"
+    source: pull
+    force_source: yes
+  register: pulled
+
+- name: Remove container
+  community.docker.docker_container:
+    name: "{{ docker_container }}"
+    state: absent
+  when: pulled.changed
+
+- name: Get infos on container
+  community.docker.docker_container_info:
+    name: "{{ docker_container }}"
+  register: result
+
+- name: Create network
+  community.docker.docker_network:
+    name: "{{ docker_network }}"
+    driver_options:
+          com.docker.network.bridge.name: "br-{{ docker_network }}"
+
+- name: Create calibre-web container
+  community.docker.docker_container:
+    image: '{{ docker_image }}'
+    volumes:
+     - '{{ docker_dir_config }}:/config:Z'
+     - '{{ docker_dir_books }}:/books:Z'
+    env:
+      PUID: '{{ docker_puid }}'
+      PGID: '{{ docker_pgid }}'
+      TZ: '{{ docker_tz }}'
+    name: "{{ docker_container }}"
+    networks:
+     - name: "{{ docker_network }}"
+    restart_policy: unless-stopped
+    state: started
+  when:
+    pulled.changed
+    or
+    result.exists == false

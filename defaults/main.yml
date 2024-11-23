@@ -1,6 +1,8 @@
 ---
-app_calibre_web_enabled: false
-app_calibre_web_puid: '16704'
-app_calibre_web_pgid: '16704'
-app_calibre_web_tz: "Europe/Zurich"
-app_calibre_web_dir: "/opt/app-calibre-web"
+role_calibre-web_image: 'lscr.io/linuxserver/calibre-web'
+role_calibre-web_container: 'calibre-web'
+role_calibre-web_puid: '1000'
+role_calibre-web_pgid: '1000'
+role_calibre-web_tz: 'Europe/Zurich'
+role_calibre-web_dir: '/opt/app-calibre-web'
+role_calibre-web_network: 'app-network'
